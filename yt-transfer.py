@@ -8,7 +8,7 @@ import pickle
 import argparse
 
 # If modifying these SCOPES, delete the file token.pickle.
-SCOPES = ['<https://www.googleapis.com/auth/youtube.upload>']
+SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
 
 def get_authenticated_service(args):
     credentials = None
@@ -25,7 +25,7 @@ def get_authenticated_service(args):
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
                 args.credentials_file, SCOPES)
-            credentials = flow.run_console()
+            credentials = flow.run_local_server(port=8080)
         # Save the credentials for the next run
         with open('token.pickle', 'wb') as token:
             pickle.dump(credentials, token)
