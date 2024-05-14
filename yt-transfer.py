@@ -7,6 +7,10 @@ import os
 import os.path
 import pickle
 import argparse
+import subprocess
+
+clear = lambda: os.system('clear')
+clear()
 
 # If modifying SCOPES, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
@@ -57,10 +61,46 @@ def progress_function(stream, chunk, bytes_remaining):
 def download_youtube_video(url):
     print("Downloading video...")
     youtube = YouTube(url, on_progress_callback=progress_function)
-    video = youtube.streams.get_highest_resolution()
-    video.download()
-    print("Download complete.")
-    return youtube.title, youtube.description, video.default_filename
+
+    # Download the highest quality video stream without audio
+    video_stream = youtube.streams.filter(adaptive=True, mime_type='video/webm').first()
+    if video_stream:
+        video_file = video_stream.download(filename_prefix="video_")
+        print("Video stream downloaded.")
+    else:
+        print("Failed to find a video stream.")
+        return None, None, None
+
+    # Download the highest quality audio stream
+    audio_streams = youtube.streams.filter(only_audio=True).all()
+    if audio_streams:
+        # Sort audio streams by bitrate in descending order and select the first one
+        audio_stream = sorted(audio_streams, key=lambda x: x.abr, reverse=True)[0]
+        audio_file = audio_stream.download(filename_prefix="audio_")
+        print("Audio stream downloaded.")
+    else:
+        print("Failed to find an audio stream.")
+        return None, None, None
+
+    # Combine video and audio using ffmpeg
+    output_filename = f"{youtube.title}.mp4"
+    command = ['ffmpeg', '-i', video_file, '-i', audio_file, '-c:v', 'copy', '-c:a', 'copy', output_filename]
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Check if ffmpeg command was successful
+    if result.returncode == 0:
+        print("Download and merge complete.")
+        # Delete intermediate files if option is enabled
+        if delete_intermediate_files:
+            os.remove(video_file)
+            os.remove(audio_file)
+            print("Intermediate files deleted.")
+        return youtube.title, youtube.description, output_filename
+    else:
+        print("ffmpeg encountered an error:")
+        print("stdout:", result.stdout.decode('utf-8'))
+        print("stderr:", result.stderr.decode('utf-8'))
+        return None, None, None
 
 def get_authenticated_service(args):
     credentials = None
