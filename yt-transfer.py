@@ -33,12 +33,14 @@ def get_authenticated_service(args):
     return build('youtube', 'v3', credentials=credentials)
 
 def download_youtube_video(url):
+    print("Downloading video...")
     youtube = YouTube(url)
     video = youtube.streams.get_highest_resolution()
     video.download()
+    print("Download complete.")
     return youtube.title, youtube.description, video.default_filename
 
-def upload_video_to_youtube(service, title, description, file_path):
+def upload_video_to_youtube(service, title, description, file_path, privacy_status="private"):
     request = service.videos().insert(
         part="snippet,status",
         body={
@@ -48,7 +50,7 @@ def upload_video_to_youtube(service, title, description, file_path):
                 "title": title
             },
             "status": {
-                "privacyStatus": "private"
+                "privacyStatus": privacy_status
             }
         },
         media_body=MediaFileUpload(file_path)
@@ -70,14 +72,16 @@ def main():
     print(f"Title: {title}")
     print(f"Description: {description}")
     new_title = input("Enter the new title (leave blank to use the original): ")
-    new_description = input("Enter the new description (leave blank to use the original): ")
+    new_description = input("Enter the new description (leave blank to use the original): ", end="")
 
     if new_title:
         title = new_title
     if new_description:
         description = new_description
 
-    upload_video_to_youtube(service, title, description, file_path)
+    privacy_status = input("Enter 'public' or 'private' for the video's privacy status: ").lower()
+
+    upload_video_to_youtube(service, title, description, file_path, privacy_status)
 
 if __name__ == '__main__':
     main()
