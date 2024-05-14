@@ -7,6 +7,10 @@ This project is a Python-based tool designed to download YouTube videos and uplo
 - Download YouTube videos in the highest resolution available.
 - Upload videos to a new YouTube channel with customizable titles and descriptions.
 - Supports OAuth 2.0 for secure authentication.
+- **New Features:**
+  - Added a download indicator to provide feedback during the download process.
+  - Introduced support for new lines in the video description, allowing for more detailed descriptions.
+  - Added an option to set the video's privacy status to either public or private, giving users more control over their video's visibility.
 
 ## Prerequisites
 
@@ -25,7 +29,8 @@ This project is a Python-based tool designed to download YouTube videos and uplo
 1. Run the script with the command `python yt-transfer.py`.
 2. Enter the YouTube URL of the video you want to download and upload.
 3. Follow the prompts to enter a new title and description for the video.
-4. The script will download the video, and then upload it to your specified YouTube channel with the new title and description.
+4. Choose whether to make the video public or private.
+5. The script will download the video, and then upload it to your specified YouTube channel with the new title, description, and privacy setting.
 
 ## Configuration
 
