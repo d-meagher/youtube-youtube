@@ -41,7 +41,7 @@ def download_youtube_video(url):
     print("Download complete.")
     return youtube.title, youtube.description, video.default_filename
 
-def upload_video_to_youtube(service, title, description, file_path, privacy_status="private"):
+def upload_video_to_youtube(service, title, description, file_path, privacy_status, category_id):
     request = service.videos().insert(
         part="snippet,status",
         body={
@@ -78,13 +78,15 @@ def main():
     print(f"Title: {title}")
     print(f"Description: {description}")
     new_title = input("Enter the new title (leave blank to use the original): ")
-    new_description = input("Enter the new description (leave blank to use the original): ", end="")
+    new_description = input("Enter the new description (leave blank to use the original): ")
     category_id = input("Enter the YouTube category ID (leave blank to use the default): ")
 
     if new_title:
         title = new_title
     if new_description:
         description = new_description
+    if category_id:
+        category_id = category_id
 
     # Choose whether the video should be private or public
     privacy_status = input("Enter 'public' or 'private' for the video's privacy status: ").lower()
