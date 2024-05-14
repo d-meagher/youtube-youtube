@@ -11,59 +11,6 @@ import argparse
 # If modifying SCOPES, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
 
-def get_authenticated_service(args):
-    credentials = None
-    # The file token.pickle stores the user's access and refresh tokens, and
-    # is created automatically when the authorization flow completes for
-    # the first time.
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
-            credentials = pickle.load(token)
-    # If there are no (valid) credentials available, let the user log in.
-    if not credentials or not credentials.valid:
-        if credentials and credentials.expired and credentials.refresh_token:
-            credentials.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                args.credentials_file, SCOPES)
-            credentials = flow.run_local_server(port=8080)
-        # Save the credentials for the next run
-        with open('token.pickle', 'wb') as token:
-            pickle.dump(credentials, token)
-
-    return build('youtube', 'v3', credentials=credentials)
-
-def download_youtube_video(url):
-    print("Downloading video...")
-    youtube = YouTube(url)
-    video = youtube.streams.get_highest_resolution()
-    video.download()
-    print("Download complete.")
-    return youtube.title, youtube.description, video.default_filename
-
-def upload_video_to_youtube(service, title, description, file_path, privacy_status, category_id):
-    request = service.videos().insert(
-        part="snippet,status",
-        body={
-            "snippet": {
-                "categoryId": category_id or "28",
-                "description": description,
-                "title": title
-            },
-            "status": {
-                "privacyStatus": privacy_status
-            }
-        },
-        media_body=MediaFileUpload(file_path)
-    )
-    response = request.execute()
-    print(f"Video uploaded: {response['snippet']['title']}")
-
-    # Construct the video URL using the video ID from the response
-    video_id = response['id']
-    video_url = f"https://www.youtube.com/watch?v={video_id}"
-    print(f"✅ Video Uploaded: {video_url}")
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--credentials-file", help="Path to client_secrets.json", default="client_secrets.json")
@@ -101,5 +48,69 @@ def main():
     else:
         print("Downloaded file will not be deleted.")
 
+def progress_function(stream, chunk, bytes_remaining):
+    total_size = stream.filesize
+    bytes_downloaded = total_size - bytes_remaining
+    percentage_of_completion = bytes_downloaded / total_size * 100
+    print(f"Downloaded {percentage_of_completion:.2f}%")
+
+def download_youtube_video(url):
+    print("Downloading video...")
+    youtube = YouTube(url, on_progress_callback=progress_function)
+    video = youtube.streams.get_highest_resolution()
+    video.download()
+    print("Download complete.")
+    return youtube.title, youtube.description, video.default_filename
+
+def get_authenticated_service(args):
+    credentials = None
+    # The file token.pickle stores the user's access and refresh tokens, and
+    # is created automatically when the authorization flow completes for
+    # the first time.
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            credentials = pickle.load(token)
+    # If there are no (valid) credentials available, let the user log in.
+    if not credentials or not credentials.valid:
+        if credentials and credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                args.credentials_file, SCOPES)
+            credentials = flow.run_local_server(port=8080)
+        # Save the credentials for the next run
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(credentials, token)
+
+    return build('youtube', 'v3', credentials=credentials)
+
+def upload_video_to_youtube(service, title, description, file_path, privacy_status, category_id):
+    request = service.videos().insert(
+        part="snippet,status",
+        body={
+            "snippet": {
+                "categoryId": category_id or "28",
+                "description": description,
+                "title": title
+            },
+            "status": {
+                "privacyStatus": privacy_status
+            }
+        },
+        media_body=MediaFileUpload(file_path)
+    )
+    response = request.execute()
+    print(f"Video uploaded: {response['snippet']['title']}")
+
+    # Construct the video URL using the video ID from the response
+    video_id = response['id']
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
+    print(f"✅ Video Uploaded: {video_url}")
+
+
 if __name__ == '__main__':
-    main()
+    url = input("Enter the YouTube URL: ")
+    title, description, file_path = download_youtube_video(url)
+    print(f"Title: {title}")
+    print(f"Description: {description}")
+    print(f"File Path: {file_path}")
