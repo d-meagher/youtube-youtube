@@ -59,6 +59,11 @@ def upload_video_to_youtube(service, title, description, file_path, privacy_stat
     response = request.execute()
     print(f"Video uploaded: {response['snippet']['title']}")
 
+    # Construct the video URL using the video ID from the response
+    video_id = response['id']
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
+    print(f"✅ Video Uploaded: {video_url}")
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--credentials-file", help="Path to client_secrets.json", default="client_secrets.json")
