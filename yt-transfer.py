@@ -3,18 +3,19 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+import os
 import os.path
 import pickle
 import argparse
 
-# If modifying these SCOPES, delete the file token.pickle.
+# If modifying SCOPES, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
 
 def get_authenticated_service(args):
     credentials = None
-    # The file token.pickle stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
+    # The file token.pickle stores the user's access and refresh tokens, and
+    # is created automatically when the authorization flow completes for
+    # the first time.
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
             credentials = pickle.load(token)
@@ -45,7 +46,7 @@ def upload_video_to_youtube(service, title, description, file_path, privacy_stat
         part="snippet,status",
         body={
             "snippet": {
-                "categoryId": "22",
+                "categoryId": category_id or "28",
                 "description": description,
                 "title": title
             },
@@ -60,8 +61,7 @@ def upload_video_to_youtube(service, title, description, file_path, privacy_stat
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--credentials-file", help="Path to client_secrets.json",
-                        default="client_secrets.json")
+    parser.add_argument("--credentials-file", help="Path to client_secrets.json", default="client_secrets.json")
     args = parser.parse_args()
 
     youtube_url = input("Enter the YouTube URL: ")
@@ -69,19 +69,30 @@ def main():
 
     service = get_authenticated_service(args)
 
+    # Choose whether or not to change the name, description or category of the video
     print(f"Title: {title}")
     print(f"Description: {description}")
     new_title = input("Enter the new title (leave blank to use the original): ")
     new_description = input("Enter the new description (leave blank to use the original): ", end="")
+    category_id = input("Enter the YouTube category ID (leave blank to use the default): ")
 
     if new_title:
         title = new_title
     if new_description:
         description = new_description
 
+    # Choose whether the video should be private or public
     privacy_status = input("Enter 'public' or 'private' for the video's privacy status: ").lower()
 
-    upload_video_to_youtube(service, title, description, file_path, privacy_status)
+    upload_video_to_youtube(service, title, description, file_path, privacy_status, category_id)
+
+    # Once the video has been uploaded ask if it should be deleted
+    delete_file = input("Do you want to delete the downloaded file? (y/n): ").lower()
+    if delete_file == "y":
+        os.remove(file_path)
+        print("Downloaded file has been deleted.")
+    else:
+        print("Downloaded file will not be deleted.")
 
 if __name__ == '__main__':
     main()
