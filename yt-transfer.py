@@ -1,13 +1,14 @@
-from pytube import YouTube
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 import os
 import os.path
 import pickle
 import argparse
 import subprocess
+
+from pytube import YouTube
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 
 clear = lambda: os.system('clear')
 clear()
