@@ -1,5 +1,6 @@
 *.json
 *.pickle
+*.DS_store
 
 # Media
 *.mp4
