@@ -23,6 +23,12 @@ def get_authenticated_service(client_secret_file, credentials_file='credentials.
     scopes = ["https://www.googleapis.com/auth/youtube.upload"]
     credentials = None
 
+    # Determine the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Construct the full path to the client_secret.json file
+    client_secret_full_path = os.path.join(script_dir, client_secret_file)
+
     if os.path.exists(credentials_file):
         with open(credentials_file, 'rb') as token:
             credentials = pickle.load(token)
@@ -31,7 +37,7 @@ def get_authenticated_service(client_secret_file, credentials_file='credentials.
         if credentials and credentials.expired and credentials.refresh_token:
             credentials.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(client_secret_file, scopes)
+            flow = InstalledAppFlow.from_client_secrets_file(client_secret_full_path, scopes)
             credentials = flow.run_local_server(port=8080)
 
         with open(credentials_file, 'wb') as token:
