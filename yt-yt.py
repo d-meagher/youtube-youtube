@@ -9,6 +9,7 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError
 from colorama import Fore, Style, init
 
 # Disable SSL verification
@@ -228,7 +229,15 @@ def main():
 
     # Create a valid filename from the title
     output_filename = f"{title.replace(' ', '_').replace('/', '_')}.mp4"
-    combine_video_and_audio(video_file, audio_file, output_filename)
+
+    if os.path.exists(output_filename):
+        overwrite = get_user_input(Fore.LIGHTRED_EX + f"File '{output_filename}' already exists. Overwrite? [y/N] " + Style.RESET_ALL, "n")
+        if overwrite.lower() != 'y':
+            print(Fore.LIGHTRED_EX + "Not overwriting - using existing file for upload" + Style.RESET_ALL)
+        else:
+            combine_video_and_audio(video_file, audio_file, output_filename)
+    else:
+        combine_video_and_audio(video_file, audio_file, output_filename)
 
     upload_to_youtube(service, title, description, output_filename, privacy_status, category_id)
 
