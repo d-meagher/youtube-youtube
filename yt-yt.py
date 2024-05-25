@@ -225,9 +225,9 @@ def main():
     print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━" + Style.RESET_ALL)
 
     title_prompt = (Fore.LIGHTGREEN_EX + "Enter the new title (or press enter to keep the original):\n" +
-                    Fore.LIGHTYELLOW_EX + f"➤ {current_title}\n" + Style.RESET_ALL + "❯ ")
+                    Fore.LIGHTYELLOW_EX + f"Original ➤ {current_title}\n" + Style.RESET_ALL + "❯ ")
     description_prompt = (Fore.LIGHTGREEN_EX + "Enter the new description (or press enter to keep the original):\n" +
-                          Fore.LIGHTYELLOW_EX + f"➤ {current_description}\n" + Style.RESET_ALL + "❯ ")
+                          Fore.LIGHTYELLOW_EX + f"Original ➤ {current_description}\n" + Style.RESET_ALL + "❯ ")
 
     title = get_user_input(title_prompt, current_title)
     description = get_user_input(description_prompt, current_description)
