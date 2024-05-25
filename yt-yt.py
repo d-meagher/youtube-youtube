@@ -87,7 +87,7 @@ def download_best_quality_video_and_audio(url):
 
     all_streams = youtube.streams
 
-    print("Available video streams:")
+    print("\nAvailable video streams:")
     for i, stream in enumerate(all_streams):
         if stream.video_codec is not None:
             print_video_quality_info(i, stream)
@@ -211,21 +211,27 @@ def main():
     clear_terminal()
     init(autoreset=True)
 
-    url = get_user_input(Fore.LIGHTGREEN_EX + "Enter the YouTube URL: " + Style.RESET_ALL)
+    print(Fore.LIGHTGREEN_EX + "YouTube Video Transfer Tool" + Style.RESET_ALL)
+    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━━━━━━━━━━━━━" + Style.RESET_ALL)
+
+    url = get_user_input(Fore.LIGHTGREEN_EX + "\nEnter the YouTube URL: " + Style.RESET_ALL + "❯ ")
     video_file, audio_file, current_title, current_description = download_best_quality_video_and_audio(url)
-    print(f"Video file saved as: {video_file}")
+    print(f"\nVideo file saved as: {video_file}")
     print(f"Audio file saved as: {audio_file}")
 
     service = get_authenticated_service('client_secret.json')
 
+    print(Fore.LIGHTGREEN_EX + "\nVideo Metadata" + Style.RESET_ALL)
+    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━" + Style.RESET_ALL)
+
     title_prompt = (Fore.LIGHTGREEN_EX + "Enter the new title (or press enter to keep the original):\n" +
-                    Fore.LIGHTYELLOW_EX + f"{current_title}\n" + Style.RESET_ALL)
+                    Fore.LIGHTYELLOW_EX + f"➤ {current_title}\n" + Style.RESET_ALL + "❯ ")
     description_prompt = (Fore.LIGHTGREEN_EX + "Enter the new description (or press enter to keep the original):\n" +
-                          Fore.LIGHTYELLOW_EX + f"{current_description}\n" + Style.RESET_ALL)
+                          Fore.LIGHTYELLOW_EX + f"➤ {current_description}\n" + Style.RESET_ALL + "❯ ")
 
     title = get_user_input(title_prompt, current_title)
     description = get_user_input(description_prompt, current_description)
-    category_id = get_user_input(Fore.LIGHTGREEN_EX + f"Enter the YouTube category ID (or press enter to use default {DEFAULT_CATEGORY_ID}): " + Style.RESET_ALL, DEFAULT_CATEGORY_ID)
+    category_id = get_user_input(Fore.LIGHTGREEN_EX + f"\nEnter the YouTube category ID (or press enter to use default {DEFAULT_CATEGORY_ID}): " + Style.RESET_ALL + "❯ ", DEFAULT_CATEGORY_ID)
 
     privacy_status = get_privacy_status()
 
@@ -233,13 +239,16 @@ def main():
     output_filename = f"{title.replace(' ', '_').replace('/', '_')}.mp4"
 
     if os.path.exists(output_filename):
-        overwrite = get_user_input(Fore.LIGHTRED_EX + f"File '{output_filename}' already exists. Overwrite? [y/N] " + Style.RESET_ALL, "n")
+        overwrite = get_user_input(Fore.LIGHTRED_EX + f"\nFile '{output_filename}' already exists. Overwrite? [y/N] " + Style.RESET_ALL + "❯ ", "n")
         if overwrite.lower() != 'y':
             print(Fore.LIGHTRED_EX + "Not overwriting - using existing file for upload" + Style.RESET_ALL)
         else:
             combine_video_and_audio(video_file, audio_file, output_filename)
     else:
         combine_video_and_audio(video_file, audio_file, output_filename)
+
+    print(Fore.LIGHTGREEN_EX + "\nUploading Video" + Style.RESET_ALL)
+    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━" + Style.RESET_ALL)
 
     upload_to_youtube(service, title, description, output_filename, privacy_status, category_id)
 
