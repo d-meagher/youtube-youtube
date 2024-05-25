@@ -150,6 +150,12 @@ def upload_to_youtube(service, title, description, file_path, privacy_status, ca
 
         print(f"Video uploaded: {response['snippet']['title']}")
         print(f"URL: https://www.youtube.com/watch?v={response['id']}")
+    except HttpError as e:
+        if e.resp.status == 403 and 'quotaExceeded' in e.content.decode():
+            print_colored_text("Error uploading video: Quota exceeded. Please try again later or request a quota increase.", Fore.RED)
+        else:
+            print_colored_text(f"Error uploading video: {e}", Fore.RED)
+        sys.exit(1)
     except Exception as e:
         print_colored_text(f"Error uploading video: {e}", Fore.RED)
         sys.exit(1)
