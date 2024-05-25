@@ -16,6 +16,8 @@ from colorama import Fore, Style, init
 ssl._create_default_https_context = ssl._create_unverified_context
 
 DEFAULT_CATEGORY_ID = "28"  # Science & Technology
+SEPARATOR = Style.RESET_ALL + "━━━━━━━━━━━━━━━━━━━━━━━━━━━" + Style.RESET_ALL
+SHORT_SEPARATOR = Style.RESET_ALL + "━━━━━━━━━━━━━━" + Style.RESET_ALL
 
 def clear_terminal():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -118,10 +120,10 @@ def download_best_quality_video_and_audio(url):
     video_streams.sort(key=lambda s: int(getattr(s, 'resolution', '0p')[:-1]), reverse=True)
 
     print("\nAvailable video streams:")
-    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━━━━━━━━━━━━━" + Style.RESET_ALL)
+    print(SEPARATOR)
     for i, stream in enumerate(video_streams):
         print_video_quality_info(i, stream)
-    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━━━━━━━━━━━━━" + Style.RESET_ALL)
+    print(SEPARATOR)
 
     try:
         video_choice = int(input("\nSelect a video stream by number: ❯ "))
@@ -132,7 +134,7 @@ def download_best_quality_video_and_audio(url):
         sys.exit(1)
 
     print("\nAvailable audio streams:")
-    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━━━━━━━━━━━━━" + Style.RESET_ALL)
+    print(SEPARATOR)
     audio_streams = youtube.streams.filter(only_audio=True)
 
     # Sort audio streams by bitrate
@@ -140,7 +142,7 @@ def download_best_quality_video_and_audio(url):
 
     for i, stream in enumerate(audio_streams):
         print_audio_streams(i, stream)
-    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━━━━━━━━━━━━━" + Style.RESET_ALL)
+    print(SEPARATOR)
 
     try:
         audio_choice = int(input("\nSelect an audio stream by number: ❯ "))
@@ -247,7 +249,7 @@ def main():
     init(autoreset=True)
 
     print(Fore.LIGHTGREEN_EX + "YouTube Video Transfer Tool" + Style.RESET_ALL)
-    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━━━━━━━━━━━━━" + Style.RESET_ALL)
+    print(SEPARATOR)
 
     url = get_user_input(Fore.LIGHTGREEN_EX + "\nEnter the YouTube URL: " + Style.RESET_ALL + "❯ ")
     video_file, audio_file, current_title, current_description = download_best_quality_video_and_audio(url)
@@ -257,12 +259,12 @@ def main():
     service = get_authenticated_service('client_secret.json')
 
     print(Fore.LIGHTGREEN_EX + "\nVideo Metadata" + Style.RESET_ALL)
-    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━" + Style.RESET_ALL)
+    print(SHORT_SEPARATOR)
 
     title_prompt = (Fore.LIGHTGREEN_EX + "Enter the new title (or press enter to keep the original):\n" +
-                    Fore.LIGHTYELLOW_EX + f"Original ➤ {current_title}\n" + Style.RESET_ALL + "❯ ")
+                    Fore.LIGHTYELLOW_EX + f"➤ {current_title}\n" + Style.RESET_ALL + "❯ ")
     description_prompt = (Fore.LIGHTGREEN_EX + "Enter the new description (or press enter to keep the original):\n" +
-                          Fore.LIGHTYELLOW_EX + f"Original ➤ {current_description}\n" + Style.RESET_ALL + "❯ ")
+                          Fore.LIGHTYELLOW_EX + f"➤ {current_description}\n" + Style.RESET_ALL + "❯ ")
 
     title = get_user_input(title_prompt, current_title)
     description = get_user_input(description_prompt, current_description)
@@ -283,7 +285,7 @@ def main():
         combine_video_and_audio(video_file, audio_file, output_filename)
 
     print(Fore.LIGHTGREEN_EX + "\nUploading Video" + Style.RESET_ALL)
-    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━" + Style.RESET_ALL)
+    print(SHORT_SEPARATOR)
 
     upload_to_youtube(service, title, description, output_filename, privacy_status, category_id)
 
