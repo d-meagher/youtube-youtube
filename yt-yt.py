@@ -153,16 +153,16 @@ def upload_to_youtube(service, title, description, file_path, privacy_status, ca
         print(f"URL: https://www.youtube.com/watch?v={response['id']}")
     except HttpError as e:
         if e.resp.status == 403 and 'quotaExceeded' in e.content.decode():
-            print_colored_text("Error uploading video: Quota exceeded. Please try again later or request a quota increase.", Fore.RED)
+            print_colored_text("Error uploading video: Quota exceeded. Please try again later or request a quota increase.", Fore.LIGHTRED_EX)
         else:
-            print_colored_text(f"Error uploading video: {e}", Fore.RED)
+            print_colored_text(f"Error uploading video: {e}", Fore.LIGHTRED_EX)
         sys.exit(1)
     except Exception as e:
-        print_colored_text(f"Error uploading video: {e}", Fore.RED)
+        print_colored_text(f"Error uploading video: {e}", Fore.LIGHTRED_EX)
         sys.exit(1)
 
 def get_user_input(prompt, default=None):
-    user_input = input(prompt)
+    user_input = input(prompt + Style.RESET_ALL)
     return user_input if user_input else default
 
 def get_privacy_status():
@@ -218,8 +218,10 @@ def main():
 
     service = get_authenticated_service('client_secret.json')
 
-    title_prompt = Fore.LIGHTGREEN_EX + f"Enter the new title (or press enter to keep the original *{current_title}*): " + Style.RESET_ALL
-    description_prompt = Fore.LIGHTGREEN_EX + f"Enter the new description (or press enter to keep the original *{current_description}*): " + Style.RESET_ALL
+    title_prompt = (Fore.LIGHTGREEN_EX + "Enter the new title (or press enter to keep the original):\n" +
+                    Fore.LIGHTYELLOW_EX + f"{current_title}\n" + Style.RESET_ALL)
+    description_prompt = (Fore.LIGHTGREEN_EX + "Enter the new description (or press enter to keep the original):\n" +
+                          Fore.LIGHTYELLOW_EX + f"{current_description}\n" + Style.RESET_ALL)
 
     title = get_user_input(title_prompt, current_title)
     description = get_user_input(description_prompt, current_description)
