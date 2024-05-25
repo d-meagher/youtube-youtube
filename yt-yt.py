@@ -56,25 +56,51 @@ def print_video_quality_info(i, stream):
             print_colored_text(f"{i}. Audio Stream: Mime Type={mime_type}", Fore.CYAN)
         elif hasattr(stream, 'resolution'):
             resolution = getattr(stream, 'resolution', 'N/A')
-            if resolution.startswith('1080p'):
-                print_colored_text(f"{i}. Best quality: {resolution} ({mime_type})", Fore.GREEN)
+            if resolution.startswith('2160p'):
+                print_colored_text(f"{i}. Ultra HD quality: {resolution} ({mime_type})", Fore.GREEN)
+            elif resolution.startswith('1440p'):
+                print_colored_text(f"{i}. Quad HD quality: {resolution} ({mime_type})", Fore.GREEN)
+            elif resolution.startswith('1080p'):
+                print_colored_text(f"{i}. Best quality: {resolution} ({mime_type})", Fore.MAGENTA)
             elif resolution.startswith('720p'):
                 print_colored_text(f"{i}. Good quality: {resolution} ({mime_type})", Fore.YELLOW)
             elif resolution.startswith('480p'):
                 print_colored_text(f"{i}. Medium quality: {resolution} ({mime_type})", Fore.BLUE)
             elif resolution.startswith('360p'):
-                print_colored_text(f"{i}. Low quality: {resolution} ({mime_type})", Fore.BLUE)
-            else:
                 print_colored_text(f"{i}. Low quality: {resolution} ({mime_type})", Fore.RED)
+            elif resolution.startswith('240p'):
+                print_colored_text(f"{i}. Low quality: {resolution} ({mime_type})", Fore.RED)
+            elif resolution.startswith('144p'):
+                print_colored_text(f"{i}. Low quality: {resolution} ({mime_type})", Fore.RED)
+            else:
+                print_colored_text(f"{i}. Unknown quality: {resolution} ({mime_type})", Fore.RED)
         else:
             print_colored_text(f"{i}. No resolution info available for this stream.", Fore.RED)
     else:
         print_colored_text(f"{i}. No stream info available.", Fore.RED)
 
-def print_audio_streams(i, stream, bitrate='Unknown'):
+def print_audio_streams(i, stream):
     if stream is not None:
-        mime_type = stream.mime_type
-        print_colored_text(f"{i}. Audio Stream: Mime Type={mime_type}, Bitrate={bitrate}", Fore.CYAN)
+        mime_type = getattr(stream, 'mime_type', 'N/A')
+        bitrate = getattr(stream, 'abr', 'Unknown')
+
+        # Determine quality based on bitrate
+        if 'kbps' in bitrate:
+            bitrate_value = int(bitrate.replace('kbps', '').strip())
+            if bitrate_value >= 160:
+                quality = "High quality"
+                color = Fore.GREEN
+            elif bitrate_value >= 128:
+                quality = "Medium quality"
+                color = Fore.YELLOW
+            else:
+                quality = "Low quality"
+                color = Fore.RED
+        else:
+            quality = "Unknown quality"
+            color = Fore.CYAN
+
+        print_colored_text(f"{i}. {quality}: {bitrate} ({mime_type})", color)
     else:
         print_colored_text(f"{i}. No stream info available.", Fore.RED)
 
@@ -87,27 +113,37 @@ def download_best_quality_video_and_audio(url):
 
     all_streams = youtube.streams
 
+    # Filter and sort video streams by resolution
+    video_streams = [stream for stream in all_streams if stream.video_codec is not None]
+    video_streams.sort(key=lambda s: int(getattr(s, 'resolution', '0p')[:-1]), reverse=True)
+
     print("\nAvailable video streams:")
-    for i, stream in enumerate(all_streams):
-        if stream.video_codec is not None:
-            print_video_quality_info(i, stream)
+    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━━━━━━━━━━━━━" + Style.RESET_ALL)
+    for i, stream in enumerate(video_streams):
+        print_video_quality_info(i, stream)
+    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━━━━━━━━━━━━━" + Style.RESET_ALL)
 
     try:
-        video_choice = int(input("Select a video stream by number: "))
-        video_stream = all_streams[video_choice]
+        video_choice = int(input("\nSelect a video stream by number: ❯ "))
+        video_stream = video_streams[video_choice]
         video_file = video_stream.download(filename_prefix="video_")
     except Exception as e:
         print_colored_text(f"Error downloading video stream: {e}", Fore.RED)
         sys.exit(1)
 
     print("\nAvailable audio streams:")
+    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━━━━━━━━━━━━━" + Style.RESET_ALL)
     audio_streams = youtube.streams.filter(only_audio=True)
+
+    # Sort audio streams by bitrate
+    audio_streams = sorted(audio_streams, key=lambda s: int(getattr(s, 'abr', '0kbps').replace('kbps', '').strip()), reverse=True)
+
     for i, stream in enumerate(audio_streams):
-        bitrate = stream.abr if hasattr(stream, 'abr') else 'Unknown'
-        print_audio_streams(i, stream, bitrate)
+        print_audio_streams(i, stream)
+    print(Fore.LIGHTGREEN_EX + "━━━━━━━━━━━━━━━━━━━━━━━━━━━" + Style.RESET_ALL)
 
     try:
-        audio_choice = int(input("\nSelect an audio stream by number: "))
+        audio_choice = int(input("\nSelect an audio stream by number: ❯ "))
         audio_stream = audio_streams[audio_choice]
         audio_file = audio_stream.download(filename_prefix="audio_")
     except Exception as e:
@@ -115,7 +151,6 @@ def download_best_quality_video_and_audio(url):
         sys.exit(1)
 
     return video_file, audio_file, youtube.title, youtube.description
-
 
 def combine_video_and_audio(video_file, audio_file, output_filename):
     command = ['ffmpeg', '-i', video_file, '-i', audio_file, '-c:v', 'copy', '-c:a', 'aac', '-loglevel', 'error', output_filename]
