@@ -126,6 +126,7 @@ def combine_video_and_audio(video_file, audio_file, output_filename):
 
 def upload_to_youtube(service, title, description, file_path, privacy_status, category_id):
     try:
+        media = MediaFileUpload(file_path, chunksize=-1, resumable=True)
         request = service.videos().insert(
             part="snippet,status",
             body={
@@ -138,9 +139,15 @@ def upload_to_youtube(service, title, description, file_path, privacy_status, ca
                     "privacyStatus": privacy_status
                 }
             },
-            media_body=MediaFileUpload(file_path)
+            media_body=media
         )
-        response = request.execute()
+
+        response = None
+        while response is None:
+            status, response = request.next_chunk()
+            if status:
+                print(f"Uploaded {int(status.progress() * 100)}%")
+
         print(f"Video uploaded: {response['snippet']['title']}")
         print(f"URL: https://www.youtube.com/watch?v={response['id']}")
     except Exception as e:
