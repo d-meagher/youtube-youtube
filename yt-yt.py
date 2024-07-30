@@ -4,7 +4,7 @@ import subprocess
 import pickle
 import ssl
 
-from pytube import YouTube
+from yt_dlp import YoutubeDL
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -51,44 +51,63 @@ def get_authenticated_service(client_secret_file, credentials_file='credentials.
 def print_colored_text(text, color):
     print(f"{color}{text}{Style.RESET_ALL}")
 
-def print_video_quality_info(i, stream):
-    if stream is not None:
-        mime_type = getattr(stream, 'mime_type', 'N/A')
-        if mime_type.startswith('audio'):
-            print_colored_text(f"{i}. Audio Stream: Mime Type={mime_type}", Fore.CYAN)
-        elif hasattr(stream, 'resolution'):
-            resolution = getattr(stream, 'resolution', 'N/A')
-            if resolution.startswith('2160p'):
-                print_colored_text(f"{i}. Ultra HD quality: {resolution} ({mime_type})", Fore.GREEN)
-            elif resolution.startswith('1440p'):
-                print_colored_text(f"{i}. Quad HD quality: {resolution} ({mime_type})", Fore.GREEN)
-            elif resolution.startswith('1080p'):
-                print_colored_text(f"{i}. Best quality: {resolution} ({mime_type})", Fore.MAGENTA)
-            elif resolution.startswith('720p'):
-                print_colored_text(f"{i}. Good quality: {resolution} ({mime_type})", Fore.YELLOW)
-            elif resolution.startswith('480p'):
-                print_colored_text(f"{i}. Medium quality: {resolution} ({mime_type})", Fore.BLUE)
-            elif resolution.startswith('360p'):
-                print_colored_text(f"{i}. Low quality: {resolution} ({mime_type})", Fore.RED)
-            elif resolution.startswith('240p'):
-                print_colored_text(f"{i}. Low quality: {resolution} ({mime_type})", Fore.RED)
-            elif resolution.startswith('144p'):
-                print_colored_text(f"{i}. Low quality: {resolution} ({mime_type})", Fore.RED)
-            else:
-                print_colored_text(f"{i}. Unknown quality: {resolution} ({mime_type})", Fore.RED)
-        else:
-            print_colored_text(f"{i}. No resolution info available for this stream.", Fore.RED)
-    else:
-        print_colored_text(f"{i}. No stream info available.", Fore.RED)
+def sort_video_formats(formats):
+    resolution_order = {
+        '2160p': 8,
+        '1440p': 7,
+        '1080p': 6,
+        '720p': 5,
+        '480p': 4,
+        '360p': 3,
+        '240p': 2,
+        '144p': 1
+    }
+    return sorted(formats, key=lambda f: resolution_order.get(f.get('format_note'), 0), reverse=True)
 
-def print_audio_streams(i, stream):
-    if stream is not None:
-        mime_type = getattr(stream, 'mime_type', 'N/A')
-        bitrate = getattr(stream, 'abr', 'Unknown')
+def sort_audio_formats(formats):
+    return sorted(formats, key=lambda f: int(f.get('abr', 0)), reverse=True)
+
+def print_video_quality_info(i, format):
+    if format is not None:
+        mime_type = format.get('ext', 'N/A')
+        resolution = format.get('format_note', 'N/A')
+        if resolution == 'N/A':
+            return  # Skip unknown quality
+        if resolution == '2160p':
+            print_colored_text(f"{i}. Ultra HD quality: {resolution} ({mime_type})", Fore.GREEN)
+        elif resolution == '1440p':
+            print_colored_text(f"{i}. Quad HD quality: {resolution} ({mime_type})", Fore.GREEN)
+        elif resolution == '1080p':
+            print_colored_text(f"{i}. Best quality: {resolution} ({mime_type})", Fore.MAGENTA)
+        elif resolution == '720p':
+            print_colored_text(f"{i}. Good quality: {resolution} ({mime_type})", Fore.YELLOW)
+        elif resolution == '480p':
+            print_colored_text(f"{i}. Medium quality: {resolution} ({mime_type})", Fore.BLUE)
+        elif resolution == '360p':
+            print_colored_text(f"{i}. Low quality: {resolution} ({mime_type})", Fore.RED)
+        elif resolution == '240p':
+            print_colored_text(f"{i}. Low quality: {resolution} ({mime_type})", Fore.RED)
+        elif resolution == '144p':
+            print_colored_text(f"{i}. Low quality: {resolution} ({mime_type})", Fore.RED)
+        elif resolution == 'Premium':
+            print_colored_text(f"{i}. Premium quality: {resolution} ({mime_type})", Fore.CYAN)
+        else:
+            print_colored_text(f"{i}. Unknown quality: {resolution} ({mime_type})", Fore.RED)
+    else:
+        print_colored_text(f"{i}. No format info available.", Fore.RED)
+
+def print_audio_streams(i, format):
+    if format is not None:
+        mime_type = format.get('ext', 'N/A')
+        bitrate = format.get('abr', 'Unknown')
+
+        # Skip unknown quality
+        if bitrate == 'Unknown' or bitrate is None:
+            return
 
         # Determine quality based on bitrate
-        if 'kbps' in bitrate:
-            bitrate_value = int(bitrate.replace('kbps', '').strip())
+        try:
+            bitrate_value = int(bitrate)
             if bitrate_value >= 160:
                 quality = "High quality"
                 color = Fore.GREEN
@@ -98,61 +117,67 @@ def print_audio_streams(i, stream):
             else:
                 quality = "Low quality"
                 color = Fore.RED
-        else:
+        except ValueError:
             quality = "Unknown quality"
             color = Fore.CYAN
 
-        print_colored_text(f"{i}. {quality}: {bitrate} ({mime_type})", color)
+        print_colored_text(f"{i}. {quality}: {bitrate}kbps ({mime_type})", color)
     else:
-        print_colored_text(f"{i}. No stream info available.", Fore.RED)
+        print_colored_text(f"{i}. No format info available.", Fore.RED)
 
 def download_best_quality_video_and_audio(url):
-    try:
-        youtube = YouTube(url)
-    except Exception as e:
-        print_colored_text(f"Error fetching YouTube URL: {e}", Fore.RED)
-        sys.exit(1)
+    ydl_opts = {
+        'format': 'bestvideo+bestaudio/best',
+        'noplaylist': True,
+        'quiet': True,
+        'outtmpl': '%(title)s.%(ext)s'
+    }
 
-    all_streams = youtube.streams
+    with YoutubeDL(ydl_opts) as ydl:
+        try:
+            info_dict = ydl.extract_info(url, download=False)
+        except Exception as e:
+            print_colored_text(f"Error fetching YouTube URL: {e}", Fore.RED)
+            sys.exit(1)
 
-    # Filter and sort video streams by resolution
-    video_streams = [stream for stream in all_streams if stream.video_codec is not None]
-    video_streams.sort(key=lambda s: int(getattr(s, 'resolution', '0p')[:-1]), reverse=True)
+        video_formats = [f for f in info_dict['formats'] if f.get('vcodec') != 'none' and f.get('format_note') != 'N/A']
+        audio_formats = [f for f in info_dict['formats'] if f.get('acodec') != 'none' and f.get('abr') is not None]
 
-    print("\nAvailable video streams:")
-    print(SEPARATOR)
-    for i, stream in enumerate(video_streams):
-        print_video_quality_info(i, stream)
-    print(SEPARATOR)
+        # Sort formats by quality
+        video_formats = sort_video_formats(video_formats)
+        audio_formats = sort_audio_formats(audio_formats)
 
-    try:
-        video_choice = int(input("\nSelect a video stream by number: ❯ "))
-        video_stream = video_streams[video_choice]
-        video_file = video_stream.download(filename_prefix="video_")
-    except Exception as e:
-        print_colored_text(f"Error downloading video stream: {e}", Fore.RED)
-        sys.exit(1)
+        print("\nAvailable video streams:")
+        print(SEPARATOR)
+        for i, format in enumerate(video_formats):
+            print_video_quality_info(i, format)
+        print(SEPARATOR)
 
-    print("\nAvailable audio streams:")
-    print(SEPARATOR)
-    audio_streams = youtube.streams.filter(only_audio=True)
+        try:
+            video_choice = int(input("\nSelect a video stream by number: ❯ "))
+            video_format = video_formats[video_choice]
+            ydl.download([url])
+            video_file = ydl.prepare_filename(info_dict)
+        except Exception as e:
+            print_colored_text(f"Error downloading video stream: {e}", Fore.RED)
+            sys.exit(1)
 
-    # Sort audio streams by bitrate
-    audio_streams = sorted(audio_streams, key=lambda s: int(getattr(s, 'abr', '0kbps').replace('kbps', '').strip()), reverse=True)
+        print("\nAvailable audio streams:")
+        print(SEPARATOR)
+        for i, format in enumerate(audio_formats):
+            print_audio_streams(i, format)
+        print(SEPARATOR)
 
-    for i, stream in enumerate(audio_streams):
-        print_audio_streams(i, stream)
-    print(SEPARATOR)
+        try:
+            audio_choice = int(input("\nSelect an audio stream by number: ❯ "))
+            audio_format = audio_formats[audio_choice]
+            ydl.download([url])
+            audio_file = ydl.prepare_filename(info_dict)
+        except Exception as e:
+            print_colored_text(f"Error downloading audio stream: {e}", Fore.RED)
+            sys.exit(1)
 
-    try:
-        audio_choice = int(input("\nSelect an audio stream by number: ❯ "))
-        audio_stream = audio_streams[audio_choice]
-        audio_file = audio_stream.download(filename_prefix="audio_")
-    except Exception as e:
-        print_colored_text(f"Error downloading audio stream: {e}", Fore.RED)
-        sys.exit(1)
-
-    return video_file, audio_file, youtube.title, youtube.description
+        return video_file, audio_file, info_dict['title'], info_dict['description']
 
 def combine_video_and_audio(video_file, audio_file, output_filename):
     command = ['ffmpeg', '-i', video_file, '-i', audio_file, '-c:v', 'copy', '-c:a', 'aac', '-loglevel', 'error', output_filename]
@@ -228,16 +253,34 @@ def delete_files(video_file, audio_file, output_filename):
 
     try:
         if choice == "1":
-            os.remove(output_filename)
-            print(Fore.LIGHTBLUE_EX + "Combined file deleted." + Style.RESET_ALL)
+            if os.path.exists(output_filename):
+                os.remove(output_filename)
+                print(Fore.LIGHTBLUE_EX + "Combined file deleted." + Style.RESET_ALL)
+            else:
+                print(Fore.RED + f"File '{output_filename}' does not exist." + Style.RESET_ALL)
         elif choice == "2":
-            os.remove(video_file)
-            os.remove(audio_file)
+            if os.path.exists(video_file):
+                os.remove(video_file)
+            else:
+                print(Fore.RED + f"File '{video_file}' does not exist." + Style.RESET_ALL)
+            if os.path.exists(audio_file):
+                os.remove(audio_file)
+            else:
+                print(Fore.RED + f"File '{audio_file}' does not exist." + Style.RESET_ALL)
             print(Fore.LIGHTBLUE_EX + "Separate video and audio files deleted." + Style.RESET_ALL)
         elif choice == "3":
-            os.remove(output_filename)
-            os.remove(video_file)
-            os.remove(audio_file)
+            if os.path.exists(output_filename):
+                os.remove(output_filename)
+            else:
+                print(Fore.RED + f"File '{output_filename}' does not exist." + Style.RESET_ALL)
+            if os.path.exists(video_file):
+                os.remove(video_file)
+            else:
+                print(Fore.RED + f"File '{video_file}' does not exist." + Style.RESET_ALL)
+            if os.path.exists(audio_file):
+                os.remove(audio_file)
+            else:
+                print(Fore.RED + f"File '{audio_file}' does not exist." + Style.RESET_ALL)
             print(Fore.LIGHTBLUE_EX + "All files deleted." + Style.RESET_ALL)
         else:
             print(Fore.LIGHTBLUE_EX + "No files deleted." + Style.RESET_ALL)
